@@ -1,47 +1,47 @@
 [
-  {
-    "key": "DisplayName",
-    "templateOptions": {
-      "label": "Displayname",
-      "required": true
+    {
+        "key":  "DisplayName",
+        "templateOptions":  {
+                                "label":  "Displayname",
+                                "required":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true
     },
-    "type": "input",
-    "summaryVisibility": "Show",
-    "requiresTemplateOptions": true
-  },
-  {
-    "key": "MailNickName",
-    "templateOptions": {
-      "label": "Mail Nickname",
-      "required": true
+    {
+        "key":  "MailNickName",
+        "templateOptions":  {
+                                "label":  "Mail Nickname",
+                                "required":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true
     },
-    "type": "input",
-    "summaryVisibility": "Show",
-    "requiresTemplateOptions": true
-  },
-  {
-    "key": "Description",
-    "templateOptions": {
-      "label": "Description"
+    {
+        "key":  "Description",
+        "templateOptions":  {
+                                "label":  "Description"
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true
     },
-    "type": "input",
-    "summaryVisibility": "Show",
-    "requiresTemplateOptions": true
-  },
-  {
-    "key": "Visibility",
-    "templateOptions": {
-      "label": "Security",
-      "useObjects": false,
-      "options": [
-        "Public",
-        "Private"
-      ]
-    },
-    "type": "radio",
-    "defaultValue": "Public",
-    "summaryVisibility": "Show",
-    "textOrLabel": "label",
-    "requiresTemplateOptions": true
-  }
+    {
+        "key":  "Visibility",
+        "templateOptions":  {
+                                "label":  "Security",
+                                "useObjects":  false,
+                                "options":  [
+                                                "Public",
+                                                "Private"
+                                            ]
+                            },
+        "type":  "radio",
+        "defaultValue":  "Public",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "label",
+        "requiresTemplateOptions":  true
+    }
 ]

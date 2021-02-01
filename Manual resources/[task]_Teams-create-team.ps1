@@ -1,7 +1,7 @@
 $connected = $false
 try {
 	Import-Module MicrosoftTeams
-	$pwd = ConvertTo-SecureString -string $TeamsAdminPWD -AsPlainText –Force
+	$pwd = ConvertTo-SecureString -string $TeamsAdminPWD -AsPlainText -Force
 	$cred = New-Object System.Management.Automation.PSCredential $TeamsAdminUser, $pwd
 	Connect-MicrosoftTeams -Credential $cred
     HID-Write-Status -Message "Connected to Microsoft Teams" -Event Information
