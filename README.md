@@ -38,3 +38,6 @@ After the all-in-one PowerShell script has run and created all the required reso
 This Delegated Form uses the following resources in order to run
 
 ### Delegated form task 'Teams-create-team'
+
+# HelloID Docs
+The official HelloID documentation can be found at: https://docs.helloid.com/
