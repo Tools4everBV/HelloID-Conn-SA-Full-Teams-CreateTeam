@@ -1,0 +1,14 @@
+[
+    {
+        "name":  "displayName",
+        "value":  "{{form.DisplayName}}"
+    },
+    {
+        "name":  "MailNickName",
+        "value":  "{{form.MailNickName}}"
+    },
+    {
+        "name":  "Visibility",
+        "value":  "{{form.Visibility}}"
+    }
+]

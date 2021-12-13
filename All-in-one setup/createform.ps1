@@ -1,35 +1,86 @@
+# Set TLS to accept TLS, TLS 1.1 and TLS 1.2
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls -bor [Net.SecurityProtocolType]::Tls11 -bor [Net.SecurityProtocolType]::Tls12
+
 #HelloID variables
-$script:PortalBaseUrl = "https://CUSTOMER.helloid.com"
+#Note: when running this script inside HelloID; portalUrl and API credentials are provided automatically (generate and save API credentials first in your admin panel!)
+$portalUrl = "https://CUSTOMER.helloid.com"
 $apiKey = "API_KEY"
 $apiSecret = "API_SECRET"
-$delegatedFormAccessGroupNames = @("Users", "HID_administrators")
-$delegatedFormCategories = @("Teams") 
-# Create authorization headers with HelloID API key
-$pair = "$apiKey" + ":" + "$apiSecret"
-$bytes = [System.Text.Encoding]::ASCII.GetBytes($pair)
-$base64 = [System.Convert]::ToBase64String($bytes)
-$key = "Basic $base64"
-$script:headers = @{"authorization" = $Key}
-# Define specific endpoint URI
-$script:PortalBaseUrl = $script:PortalBaseUrl.trim("/") + "/"
- 
-function Write-ColorOutput($ForegroundColor) {
-    $fc = $host.UI.RawUI.ForegroundColor
-    $host.UI.RawUI.ForegroundColor = $ForegroundColor
-    
-    if ($args) {
-        Write-Output $args
-    } else {
-        $input | Write-Output
-    }
-    $host.UI.RawUI.ForegroundColor = $fc
+$delegatedFormAccessGroupNames = @("Users") #Only unique names are supported. Groups must exist!
+$delegatedFormCategories = @("Teams") #Only unique names are supported. Categories will be created if not exists
+$script:debugLogging = $false #Default value: $false. If $true, the HelloID resource GUIDs will be shown in the logging
+$script:duplicateForm = $false #Default value: $false. If $true, the HelloID resource names will be changed to import a duplicate Form
+$script:duplicateFormSuffix = "_tmp" #the suffix will be added to all HelloID resource names to generate a duplicate form with different resource names
+
+#The following HelloID Global variables are used by this form. No existing HelloID global variables will be overriden only new ones are created.
+#NOTE: You can also update the HelloID Global variable values afterwards in the HelloID Admin Portal: https://<CUSTOMER>.helloid.com/admin/variablelibrary
+$globalHelloIDVariables = [System.Collections.Generic.List[object]]@();
+
+#Global variable #1 >> TeamsAdminPWD
+$tmpName = @'
+TeamsAdminPWD
+'@ 
+$tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
+
+#Global variable #2 >> TeamsAdminUser
+$tmpName = @'
+TeamsAdminUser
+'@ 
+$tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
+
+
+#make sure write-information logging is visual
+$InformationPreference = "continue"
+
+# Check for prefilled API Authorization header
+if (-not [string]::IsNullOrEmpty($portalApiBasic)) {
+    $script:headers = @{"authorization" = $portalApiBasic}
+    Write-Information "Using prefilled API credentials"
+} else {
+    # Create authorization headers with HelloID API key
+    $pair = "$apiKey" + ":" + "$apiSecret"
+    $bytes = [System.Text.Encoding]::ASCII.GetBytes($pair)
+    $base64 = [System.Convert]::ToBase64String($bytes)
+    $key = "Basic $base64"
+    $script:headers = @{"authorization" = $Key}
+    Write-Information "Using manual API credentials"
 }
+
+# Check for prefilled PortalBaseURL
+if (-not [string]::IsNullOrEmpty($portalBaseUrl)) {
+    $script:PortalBaseUrl = $portalBaseUrl
+    Write-Information "Using prefilled PortalURL: $script:PortalBaseUrl"
+} else {
+    $script:PortalBaseUrl = $portalUrl
+    Write-Information "Using manual PortalURL: $script:PortalBaseUrl"
+}
+
+# Define specific endpoint URI
+$script:PortalBaseUrl = $script:PortalBaseUrl.trim("/") + "/"  
+
+# Make sure to reveive an empty array using PowerShell Core
+function ConvertFrom-Json-WithEmptyArray([string]$jsonString) {
+    # Running in PowerShell Core?
+    if($IsCoreCLR -eq $true){
+        $r = [Object[]]($jsonString | ConvertFrom-Json -NoEnumerate)
+        return ,$r  # Force return value to be an array using a comma
+    } else {
+        $r = [Object[]]($jsonString | ConvertFrom-Json)
+        return ,$r  # Force return value to be an array using a comma
+    }
+}
+
 function Invoke-HelloIDGlobalVariable {
     param(
         [parameter(Mandatory)][String]$Name,
         [parameter(Mandatory)][String][AllowEmptyString()]$Value,
         [parameter(Mandatory)][String]$Secret
     )
+
+    $Name = $Name + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
+
     try {
         $uri = ($script:PortalBaseUrl + "api/v1/automation/variables/named/$Name")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
@@ -47,15 +98,17 @@ function Invoke-HelloIDGlobalVariable {
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $variableGuid = $response.automationVariableGuid
-            Write-ColorOutput Green "Variable '$Name' created: $variableGuid"
+
+            Write-Information "Variable '$Name' created$(if ($script:debugLogging -eq $true) { ": " + $variableGuid })"
         } else {
             $variableGuid = $response.automationVariableGuid
-            Write-ColorOutput Yellow "Variable '$Name' already exists: $variableGuid"
+            Write-Warning "Variable '$Name' already exists$(if ($script:debugLogging -eq $true) { ": " + $variableGuid })"
         }
     } catch {
-        Write-ColorOutput Red "Variable '$Name', message: $_"
+        Write-Error "Variable '$Name', message: $_"
     }
 }
+
 function Invoke-HelloIDAutomationTask {
     param(
         [parameter(Mandatory)][String]$TaskName,
@@ -68,6 +121,8 @@ function Invoke-HelloIDAutomationTask {
         [parameter(Mandatory)][Ref]$returnObject
     )
     
+    $TaskName = $TaskName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
+
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/automationtasks?search=$TaskName&container=$AutomationContainer")
         $responseRaw = (Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false) 
@@ -75,30 +130,34 @@ function Invoke-HelloIDAutomationTask {
     
         if([string]::IsNullOrEmpty($response.automationTaskGuid) -or $ForceCreateTask -eq $true) {
             #Create Task
+
             $body = @{
                 name                = $TaskName;
                 useTemplate         = $UseTemplate;
                 powerShellScript    = $PowershellScript;
                 automationContainer = $AutomationContainer;
                 objectGuid          = $ObjectGuid;
-                variables           = [Object[]]($Variables | ConvertFrom-Json);
+                variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
             $body = ConvertTo-Json -InputObject $body
     
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $taskGuid = $response.automationTaskGuid
-            Write-ColorOutput Green "Powershell task '$TaskName' created: $taskGuid"  
+
+            Write-Information "Powershell task '$TaskName' created$(if ($script:debugLogging -eq $true) { ": " + $taskGuid })"
         } else {
             #Get TaskGUID
             $taskGuid = $response.automationTaskGuid
-            Write-ColorOutput Yellow "Powershell task '$TaskName' already exists: $taskGuid"
+            Write-Warning "Powershell task '$TaskName' already exists$(if ($script:debugLogging -eq $true) { ": " + $taskGuid })"
         }
     } catch {
-        Write-ColorOutput Red "Powershell task '$TaskName', message: $_"
+        Write-Error "Powershell task '$TaskName', message: $_"
     }
+
     $returnObject.Value = $taskGuid
 }
+
 function Invoke-HelloIDDatasource {
     param(
         [parameter(Mandatory)][String]$DatasourceName,
@@ -110,6 +169,9 @@ function Invoke-HelloIDDatasource {
         [parameter()][String][AllowEmptyString()]$AutomationTaskGuid,
         [parameter(Mandatory)][Ref]$returnObject
     )
+
+    $DatasourceName = $DatasourceName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
+
     $datasourceTypeName = switch($DatasourceType) { 
         "1" { "Native data source"; break} 
         "2" { "Static data source"; break} 
@@ -126,11 +188,11 @@ function Invoke-HelloIDDatasource {
             $body = @{
                 name               = $DatasourceName;
                 type               = $DatasourceType;
-                model              = [Object[]]($DatasourceModel | ConvertFrom-Json);
+                model              = (ConvertFrom-Json-WithEmptyArray($DatasourceModel));
                 automationTaskGUID = $AutomationTaskGuid;
-                value              = [Object[]]($DatasourceStaticValue | ConvertFrom-Json);
+                value              = (ConvertFrom-Json-WithEmptyArray($DatasourceStaticValue));
                 script             = $DatasourcePsScript;
-                input              = [Object[]]($DatasourceInput | ConvertFrom-Json);
+                input              = (ConvertFrom-Json-WithEmptyArray($DatasourceInput));
             }
             $body = ConvertTo-Json -InputObject $body
       
@@ -138,17 +200,19 @@ function Invoke-HelloIDDatasource {
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
               
             $datasourceGuid = $response.dataSourceGUID
-            Write-ColorOutput Green "$datasourceTypeName '$DatasourceName' created: $datasourceGuid"
+            Write-Information "$datasourceTypeName '$DatasourceName' created$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         } else {
             #Get DatasourceGUID
             $datasourceGuid = $response.dataSourceGUID
-            Write-ColorOutput Yellow "$datasourceTypeName '$DatasourceName' already exists: $datasourceGuid"
+            Write-Warning "$datasourceTypeName '$DatasourceName' already exists$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         }
     } catch {
-      Write-ColorOutput Red "$datasourceTypeName '$DatasourceName', message: $_"
+      Write-Error "$datasourceTypeName '$DatasourceName', message: $_"
     }
+
     $returnObject.Value = $datasourceGuid
 }
+
 function Invoke-HelloIDDynamicForm {
     param(
         [parameter(Mandatory)][String]$FormName,
@@ -156,6 +220,8 @@ function Invoke-HelloIDDynamicForm {
         [parameter(Mandatory)][Ref]$returnObject
     )
     
+    $FormName = $FormName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
+
     try {
         try {
             $uri = ($script:PortalBaseUrl +"api/v1/forms/$FormName")
@@ -168,7 +234,7 @@ function Invoke-HelloIDDynamicForm {
             #Create Dynamic form
             $body = @{
                 Name       = $FormName;
-                FormSchema = [Object[]]($FormSchema | ConvertFrom-Json)
+                FormSchema = (ConvertFrom-Json-WithEmptyArray($FormSchema));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
     
@@ -176,16 +242,19 @@ function Invoke-HelloIDDynamicForm {
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
     
             $formGuid = $response.dynamicFormGUID
-            Write-ColorOutput Green "Dynamic form '$formName' created: $formGuid"
+            Write-Information "Dynamic form '$formName' created$(if ($script:debugLogging -eq $true) { ": " + $formGuid })"
         } else {
             $formGuid = $response.dynamicFormGUID
-            Write-ColorOutput Yellow "Dynamic form '$FormName' already exists: $formGuid"
+            Write-Warning "Dynamic form '$FormName' already exists$(if ($script:debugLogging -eq $true) { ": " + $formGuid })"
         }
     } catch {
-        Write-ColorOutput Red "Dynamic form '$FormName', message: $_"
+        Write-Error "Dynamic form '$FormName', message: $_"
     }
+
     $returnObject.Value = $formGuid
 }
+
+
 function Invoke-HelloIDDelegatedForm {
     param(
         [parameter(Mandatory)][String]$DelegatedFormName,
@@ -197,7 +266,8 @@ function Invoke-HelloIDDelegatedForm {
         [parameter(Mandatory)][Ref]$returnObject
     )
     $delegatedFormCreated = $false
-    
+    $DelegatedFormName = $DelegatedFormName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
+
     try {
         try {
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms/$DelegatedFormName")
@@ -212,7 +282,7 @@ function Invoke-HelloIDDelegatedForm {
                 name            = $DelegatedFormName;
                 dynamicFormGUID = $DynamicFormGuid;
                 isEnabled       = "True";
-                accessGroups    = [Object[]]($AccessGroups | ConvertFrom-Json);
+                accessGroups    = (ConvertFrom-Json-WithEmptyArray($AccessGroups));
                 useFaIcon       = $UseFaIcon;
                 faIcon          = $FaIcon;
             }    
@@ -222,33 +292,29 @@ function Invoke-HelloIDDelegatedForm {
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
     
             $delegatedFormGuid = $response.delegatedFormGUID
-            Write-ColorOutput Green "Delegated form '$DelegatedFormName' created: $delegatedFormGuid"
+            Write-Information "Delegated form '$DelegatedFormName' created$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormGuid })"
             $delegatedFormCreated = $true
+
             $bodyCategories = $Categories
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms/$delegatedFormGuid/categories")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $bodyCategories
-            Write-ColorOutput Green "Delegated form '$DelegatedFormName' updated with categories"
+            Write-Information "Delegated form '$DelegatedFormName' updated with categories"
         } else {
             #Get delegatedFormGUID
             $delegatedFormGuid = $response.delegatedFormGUID
-            Write-ColorOutput Yellow "Delegated form '$DelegatedFormName' already exists: $delegatedFormGuid"
+            Write-Warning "Delegated form '$DelegatedFormName' already exists$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormGuid })"
         }
     } catch {
-        Write-ColorOutput Red "Delegated form '$DelegatedFormName', message: $_"
+        Write-Error "Delegated form '$DelegatedFormName', message: $_"
     }
+
     $returnObject.value.guid = $delegatedFormGuid
     $returnObject.value.created = $delegatedFormCreated
-}<# Begin: HelloID Global Variables #>
-$tmpValue = "" 
-$tmpName = @'
-TeamsAdminUser
-'@ 
-Invoke-HelloIDGlobalVariable -Name $tmpName -Value $tmpValue -Secret "True" 
-$tmpValue = "" 
-$tmpName = @'
-TeamsAdminPWD
-'@ 
-Invoke-HelloIDGlobalVariable -Name $tmpName -Value $tmpValue -Secret "True" 
+}
+<# Begin: HelloID Global Variables #>
+foreach ($item in $globalHelloIDVariables) {
+	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
+}
 <# End: HelloID Global Variables #>
 
 
@@ -275,12 +341,13 @@ foreach($group in $delegatedFormAccessGroupNames) {
         $delegatedFormAccessGroupGuid = $response.groupGuid
         $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
         
-        Write-ColorOutput Green "HelloID (access)group '$group' successfully found: $delegatedFormAccessGroupGuid"
+        Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
     } catch {
-        Write-ColorOutput Red "HelloID (access)group '$group', message: $_"
+        Write-Error "HelloID (access)group '$group', message: $_"
     }
 }
-$delegatedFormAccessGroupGuids = (ConvertTo-Json -InputObject $delegatedFormAccessGroupGuids -Compress)
+$delegatedFormAccessGroupGuids = ($delegatedFormAccessGroupGuids | Select-Object -Unique | ConvertTo-Json -Compress)
+
 $delegatedFormCategoryGuids = @()
 foreach($category in $delegatedFormCategories) {
     try {
@@ -289,18 +356,20 @@ foreach($category in $delegatedFormCategories) {
         $tmpGuid = $response.delegatedFormCategoryGuid
         $delegatedFormCategoryGuids += $tmpGuid
         
-        Write-ColorOutput Green "HelloID Delegated Form category '$category' successfully found: $tmpGuid"
+        Write-Information "HelloID Delegated Form category '$category' successfully found$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     } catch {
-        Write-ColorOutput Yellow "HelloID Delegated Form category '$category' not found"
+        Write-Warning "HelloID Delegated Form category '$category' not found"
         $body = @{
             name = @{"en" = $category};
         }
         $body = ConvertTo-Json -InputObject $body
+
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories")
         $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
         $tmpGuid = $response.delegatedFormCategoryGuid
         $delegatedFormCategoryGuids += $tmpGuid
-        Write-ColorOutput Green "HelloID Delegated Form category '$category' successfully created: $tmpGuid"
+
+        Write-Information "HelloID Delegated Form category '$category' successfully created$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     }
 }
 $delegatedFormCategoryGuids = (ConvertTo-Json -InputObject $delegatedFormCategoryGuids -Compress)
@@ -358,6 +427,6 @@ Teams-create-team
 '@
 	Invoke-HelloIDAutomationTask -TaskName $delegatedFormTaskName -UseTemplate "False" -AutomationContainer "8" -Variables $tmpVariables -PowershellScript $tmpScript -ObjectGuid $delegatedFormRef.guid -ForceCreateTask $true -returnObject ([Ref]$delegatedFormTaskGuid) 
 } else {
-	Write-ColorOutput Yellow "Delegated form '$delegatedFormName' already exists. Nothing to do with the Delegated Form task..." 
+	Write-Warning "Delegated form '$delegatedFormName' already exists. Nothing to do with the Delegated Form task..." 
 }
 <# End: Delegated Form Task #>

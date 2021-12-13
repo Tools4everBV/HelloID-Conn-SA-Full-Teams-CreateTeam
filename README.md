@@ -5,7 +5,13 @@ This HelloID Service Automation Delegated Form can create a Microsoft Teams Team
 <!-- Requirements -->
 ## Requirements
 The Powershell Module "MicrosoftTeams" is required on the HelloID Agent Server in order to use this Form
- 
+
+## Versioning
+| Version | Description | Date |
+| - | - | - |
+| 1.0.1   | Added version number and updated all-in-one script | 2021/12/13  |
+| 1.0.0   | Initial release | 2020/12/05  |
+
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents
 * [Description](#description)
@@ -39,5 +45,8 @@ This Delegated Form uses the following resources in order to run
 
 ### Delegated form task 'Teams-create-team'
 
-# HelloID Docs
+## Getting help
+_If you need help, feel free to ask questions on our [forum](https://forum.helloid.com/forum/helloid-connectors/service-automation/650-helloid-sa-microsoft-teams-create-teams)_
+
+## HelloID Docs
 The official HelloID documentation can be found at: https://docs.helloid.com/
