@@ -1,4 +1,4 @@
 {
-  "name": "Teams - Create Team",
-  "runInCloud": false
+    "name":  "Teams - Create Team",
+    "runInCloud":  true
 }
