@@ -2,10 +2,6 @@
 ## Description
 This HelloID Service Automation Delegated Form can create a Microsoft Teams Team
 
-<!-- Requirements -->
-## Requirements
-The Powershell Module "MicrosoftTeams" is required on the HelloID Agent Server in order to use this Form
-
 ## Versioning
 | Version | Description | Date |
 | - | - | - |
