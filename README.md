@@ -22,7 +22,7 @@ By using this delegated form , you can create Microsoft Teams teams through Micr
 - **Microsoft Graph application permissions**:
   Configure and grant admin consent for the following minimal application permissions:
   - `User.Read.All`
-  - `Group.Read.All`
+  - `GroupMember.Read.All`
   - `Team.Create`
   - `TeamMember.ReadWrite.All`
 
@@ -68,6 +68,7 @@ The following endpoints are used by the connector.
 - https://learn.microsoft.com/graph/api/team-post
 - https://learn.microsoft.com/graph/api/user-list
 - https://learn.microsoft.com/graph/api/group-list
+- https://learn.microsoft.com/graph/api/team-post-members
 
 ## Getting help
 > :bulb: **Tip:**  
