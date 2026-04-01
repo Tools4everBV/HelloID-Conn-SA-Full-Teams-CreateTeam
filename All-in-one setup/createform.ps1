@@ -16,32 +16,30 @@ $script:duplicateFormSuffix = "_tmp" #the suffix will be added to all HelloID re
 #NOTE: You can also update the HelloID Global variable values afterwards in the HelloID Admin Portal: https://<CUSTOMER>.helloid.com/admin/variablelibrary
 $globalHelloIDVariables = [System.Collections.Generic.List[object]]@();
 
-#Global variable #1 >> EntraIdCertificateBase64String
+#Global variable #1 >> EntraIdCertificatePassword
+$tmpName = @'
+EntraIdCertificatePassword
+'@ 
+$tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
+
+#Global variable #2 >> EntraIdCertificateBase64String
 $tmpName = @'
 EntraIdCertificateBase64String
 '@ 
 $tmpValue = "" 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
 
-#Global variable #2 >> EntraIdAppId
-$tmpName = @'
-EntraIdAppId
-'@ 
-$tmpValue = @'
-'@ 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
-
 #Global variable #3 >> EntraIdTenantId
 $tmpName = @'
 EntraIdTenantId
 '@ 
-$tmpValue = @'
-'@ 
-$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "False"});
+$tmpValue = "" 
+$globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
 
-#Global variable #4 >> EntraIdCertificatePassword
+#Global variable #4 >> EntraIdAppId
 $tmpName = @'
-EntraIdCertificatePassword
+EntraIdAppId
 '@ 
 $tmpValue = "" 
 $globalHelloIDVariables.Add([PSCustomObject]@{name = $tmpName; value = $tmpValue; secret = "True"});
@@ -117,7 +115,7 @@ function Invoke-HelloIDGlobalVariable {
     try {
         $uri = ($script:PortalBaseUrl + "api/v1/automation/variables/named/$Name")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-
+    
         if ([string]::IsNullOrEmpty($response.automationVariableGuid)) {
             #Create Variable
             $body = @{
@@ -127,7 +125,7 @@ function Invoke-HelloIDGlobalVariable {
                 ItemType = 0;
             }    
             $body = ConvertTo-Json -InputObject $body -Depth 100
-
+    
             $uri = ($script:PortalBaseUrl + "api/v1/automation/variable")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $variableGuid = $response.automationVariableGuid
@@ -153,14 +151,14 @@ function Invoke-HelloIDAutomationTask {
         [parameter()][String][AllowEmptyString()]$ForceCreateTask,
         [parameter(Mandatory)][Ref]$returnObject
     )
-
+    
     $TaskName = $TaskName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
 
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/automationtasks?search=$TaskName&container=$AutomationContainer")
         $responseRaw = (Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false) 
         $response = $responseRaw | Where-Object -filter {$_.name -eq $TaskName}
-
+    
         if([string]::IsNullOrEmpty($response.automationTaskGuid) -or $ForceCreateTask -eq $true) {
             #Create Task
 
@@ -173,7 +171,7 @@ function Invoke-HelloIDAutomationTask {
                 variables           = (ConvertFrom-Json-WithEmptyArray($Variables));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-
+    
             $uri = ($script:PortalBaseUrl +"api/v1/automationtasks/powershell")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
             $taskGuid = $response.automationTaskGuid
@@ -212,11 +210,11 @@ function Invoke-HelloIDDatasource {
         "3" { "Task data source"; break} 
         "4" { "Powershell data source"; break}
     }
-
+    
     try {
         $uri = ($script:PortalBaseUrl +"api/v1/datasource/named/$DatasourceName")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
-    
+      
         if([string]::IsNullOrEmpty($response.dataSourceGUID)) {
             #Create DataSource
             $body = @{
@@ -230,10 +228,10 @@ function Invoke-HelloIDDatasource {
                 runInCloud         = $DatasourceRunInCloud;
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-    
+      
             $uri = ($script:PortalBaseUrl +"api/v1/datasource")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-            
+              
             $datasourceGuid = $response.dataSourceGUID
             Write-Information "$datasourceTypeName '$DatasourceName' created$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         } else {
@@ -242,7 +240,7 @@ function Invoke-HelloIDDatasource {
             Write-Warning "$datasourceTypeName '$DatasourceName' already exists$(if ($script:debugLogging -eq $true) { ": " + $datasourceGuid })"
         }
     } catch {
-        Write-Error "$datasourceTypeName '$DatasourceName', message: $_"
+      Write-Error "$datasourceTypeName '$DatasourceName', message: $_"
     }
 
     $returnObject.Value = $datasourceGuid
@@ -254,7 +252,7 @@ function Invoke-HelloIDDynamicForm {
         [parameter(Mandatory)][String]$FormSchema,
         [parameter(Mandatory)][Ref]$returnObject
     )
-
+    
     $FormName = $FormName + $(if ($script:duplicateForm -eq $true) { $script:duplicateFormSuffix })
 
     try {
@@ -264,7 +262,7 @@ function Invoke-HelloIDDynamicForm {
         } catch {
             $response = $null
         }
-
+    
         if(([string]::IsNullOrEmpty($response.dynamicFormGUID)) -or ($response.isUpdated -eq $true)) {
             #Create Dynamic form
             $body = @{
@@ -272,10 +270,10 @@ function Invoke-HelloIDDynamicForm {
                 FormSchema = (ConvertFrom-Json-WithEmptyArray($FormSchema));
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-
+    
             $uri = ($script:PortalBaseUrl +"api/v1/forms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-
+    
             $formGuid = $response.dynamicFormGUID
             Write-Information "Dynamic form '$formName' created$(if ($script:debugLogging -eq $true) { ": " + $formGuid })"
         } else {
@@ -311,7 +309,7 @@ function Invoke-HelloIDDelegatedForm {
         } catch {
             $response = $null
         }
-
+    
         if([string]::IsNullOrEmpty($response.delegatedFormGUID)) {
             #Create DelegatedForm
             $body = @{
@@ -328,10 +326,10 @@ function Invoke-HelloIDDelegatedForm {
                 }
             }
             $body = ConvertTo-Json -InputObject $body -Depth 100
-
+    
             $uri = ($script:PortalBaseUrl +"api/v1/delegatedforms")
             $response = Invoke-RestMethod -Method Post -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false -Body $body
-
+    
             $delegatedFormGuid = $response.delegatedFormGUID
             Write-Information "Delegated form '$DelegatedFormName' created$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormGuid })"
             $delegatedFormCreated = $true
@@ -353,6 +351,7 @@ function Invoke-HelloIDDelegatedForm {
     $returnObject.value.created = $delegatedFormCreated
 }
 
+
 <# Begin: HelloID Global Variables #>
 foreach ($item in $globalHelloIDVariables) {
 	Invoke-HelloIDGlobalVariable -Name $item.name -Value $item.value -Secret $item.secret 
@@ -365,8 +364,8 @@ foreach ($item in $globalHelloIDVariables) {
 $tmpPsScript = @'
 #######################################################################
 # Template: HelloID SA Powershell data source
-# Name:     Teams - Create Team | validation
-# Date:     04-03-2026
+# Name:     teams-create-team | Validation
+# Date:     01-04-2026
 #######################################################################
 
 # For basic information about powershell data sources see:
@@ -426,8 +425,8 @@ function Get-MSEntraAccessToken {
 
         # Create a JWT payload
         $payload = [Ordered]@{
-            'iss' = "$EntraIdAppId"
-            'sub' = "$EntraIdAppId"
+            'iss' = "$entraidappid"
+            'sub' = "$entraidappid"
             'aud' = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             'exp' = ($currentUnixTimestamp + 3600) # Expires in 1 hour
             'nbf' = ($currentUnixTimestamp - 300) # Not before 5 minutes ago
@@ -456,7 +455,7 @@ function Get-MSEntraAccessToken {
 
         $createEntraAccessTokenBody = @{
             grant_type            = 'client_credentials'
-            client_id             = $EntraIdAppId
+            client_id             = $entraidappid
             client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
             client_assertion      = $jwtToken
             resource              = 'https://graph.microsoft.com'
@@ -491,6 +490,7 @@ function Get-MSEntraCertificate {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
+
 function Resolve-MicrosoftGraphAPIError {
     [CmdletBinding()]
     param (
@@ -545,16 +545,16 @@ try {
     $actionMessage = "checking Entra ID for uniqueness"
 
     # Setup Connection with Entra/Exo
-    Write-Information 'Checking Entra ID for uniqueness, connecting to MS-Entra'
+    Write-Verbose 'connecting to MS-Entra'
     $certificate = Get-MSEntraCertificate
     $entraToken = Get-MSEntraAccessToken -Certificate $certificate
     
     #Add the authorization header to the request
     $authorization = @{
-        Authorization    = "Bearer $entraToken"
-        'Content-Type'   = "application/json"
-        Accept           = "application/json"
-        ConsistencyLevel = "eventual"
+        Authorization  = "Bearer $entraToken";
+        'Content-Type' = "application/json";
+        Accept         = "application/json";
+        "ConsistencyLevel" = "eventual" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)
     } 
 
     $graphApiUrl = "https://graph.microsoft.com/v1.0/groups"
@@ -577,7 +577,7 @@ try {
         $entraIDGroups += $entraIDGroupsResponse.value
     }  
 
-    Write-Warning "groups: [$($entraIDGroups | ConvertTo-Json)]"
+    Write-Information "Found [$($entraIDGroups.Count)] groups"
 
     foreach ($record in $entraIDGroups) {
         if ($record.displayName -eq $displayName) {
@@ -622,7 +622,7 @@ try {
         $outputMessage += "`n" + $($text.Message)
     }
 
-    Write-Output $outputMessage      
+    Write-Output $outputMessage
 }
 catch {
     $ex = $PSItem
@@ -638,9 +638,8 @@ catch {
     }
     Write-Warning $warningMessage
     Write-Error $auditMessage
-}  
+}
 #endregion lookup
-
 
 '@ 
 $tmpModel = @'
@@ -658,13 +657,23 @@ Invoke-HelloIDDatasource -DatasourceName $dataSourceGuid_1_Name -DatasourceType 
 
 <# Begin: DataSource "teams-create-team | Teams-Get-All-Entra-Id-Users" #>
 $tmpPsScript = @'
+#######################################################################
+# Template: HelloID SA Powershell data source
+# Name:     teams-create-team | Teams-Get-All-Entra-Id-Users
+# Date:     01-04-2026
+#######################################################################
 
-# Global variables
-# Outcommented as these are set from Global Variables
-# $EntraIdTenantId = ""
-# $EntraIdAppId = ""
-# $EntraIdCertificateBase64String = ""
-# $EntraIdCertificatePassword = ""
+# For basic information about powershell data sources see:
+# https://docs.helloid.com/en/service-automation/dynamic-forms/data-sources/powershell-data-sources/add,-edit,-or-remove-a-powershell-data-source.html#add-a-powershell-data-source
+
+# Service automation variables:
+# https://docs.helloid.com/en/service-automation/service-automation-variables/service-automation-variable-reference.html
+
+#region init
+
+$VerbosePreference = "SilentlyContinue"
+$InformationPreference = "Continue"
+$WarningPreference = "Continue"
 
 # Fixed values
 $filter = "`$filter=accountEnabled eq true" # Get all enabled users
@@ -681,13 +690,19 @@ $propertiesToSelect = @(
     "accountEnabled"
 ) # Properties to select from Microsoft Graph API, comma separated
 
-# Enable TLS1.2
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12
+# global variables (Automation --> Variable library):
+# Outcommented as these are set from Global Variables
+# $EntraIdTenantId = ""
+# $EntraIdAppId = ""
+# $EntraIdCertificateBase64String = ""
+# $EntraIdCertificatePassword = ""
+# $TeamsMailsuffix = ""
 
-# Set debug logging
-$VerbosePreference = "SilentlyContinue"
-$InformationPreference = "Continue"
-$WarningPreference = "Continue"
+# variables configured in form:
+# $formValue1 = $datasource.<formElementKey>.<value>
+# $formValue2 = $datasource.<formElementKey>
+
+#endregion init
 
 #region functions
 function Resolve-MicrosoftGraphAPIError {
@@ -741,18 +756,7 @@ function Get-MSEntraAccessToken {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [ValidateNotNull()]
-        $Certificate,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $AppId,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $TenantId
+        $Certificate
     )
     try {
         # Get the DER encoded bytes of the certificate
@@ -776,9 +780,9 @@ function Get-MSEntraAccessToken {
 
         # Create a JWT payload
         $payload = [Ordered]@{
-            'iss' = "$($AppId)"
-            'sub' = "$($AppId)"
-            'aud' = "https://login.microsoftonline.com/$($TenantId)/oauth2/token"
+            'iss' = "$entraidappid"
+            'sub' = "$entraidappid"
+            'aud' = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             'exp' = ($currentUnixTimestamp + 3600) # Expires in 1 hour
             'nbf' = ($currentUnixTimestamp - 300) # Not before 5 minutes ago
             'iat' = $currentUnixTimestamp
@@ -795,8 +799,8 @@ function Get-MSEntraAccessToken {
         $signatureInput = "$base64Header.$base64Payload"
         $signature = $rsa.SignData([Text.Encoding]::UTF8.GetBytes($signatureInput), 'SHA256')
         $base64Signature = [System.Convert]::ToBase64String($signature).Replace('+', '-').Replace('/', '_').Replace('=', '')
-
-        # Ensure the certificate has a private key
+	
+        # Extract the private key from the certificate
         if (-not $Certificate.HasPrivateKey -or -not $Certificate.PrivateKey) {
             throw "The certificate does not have a private key."
         }
@@ -806,14 +810,14 @@ function Get-MSEntraAccessToken {
 
         $createEntraAccessTokenBody = @{
             grant_type            = 'client_credentials'
-            client_id             = $AppId
+            client_id             = $entraidappid
             client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
             client_assertion      = $jwtToken
             resource              = 'https://graph.microsoft.com'
         }
 
         $createEntraAccessTokenSplatParams = @{
-            Uri         = "https://login.microsoftonline.com/$($TenantId)/oauth2/token"
+            Uri         = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             Body        = $createEntraAccessTokenBody
             Method      = 'POST'
             ContentType = 'application/x-www-form-urlencoded'
@@ -831,45 +835,32 @@ function Get-MSEntraAccessToken {
 
 function Get-MSEntraCertificate {
     [CmdletBinding()]
-    param(
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $CertificateBase64String,
-        
-        [Parameter(Mandatory)]
-        [ValidateNotNullOrEmpty()]
-        [string]
-        $CertificatePassword
-    )
+    param()
     try {
-        $rawCertificate = [system.convert]::FromBase64String($CertificateBase64String)
-        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $CertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
+        $rawCertificate = [system.convert]::FromBase64String($EntraIdCertificateBase64String)
+        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $EntraIdCertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)
         Write-Output $certificate
     }
     catch {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
+
 #endregion functions
 
 try {
-    # Convert base64 certificate string to certificate object
-    $actionMessage = "converting base64 certificate string to certificate object"
-    $certificate = Get-MSEntraCertificate -CertificateBase64String $EntraIdCertificateBase64String -CertificatePassword $EntraIdCertificatePassword
+    # Setup Connection with Entra/Exo
+    Write-Verbose 'connecting to MS-Entra'
+    $certificate = Get-MSEntraCertificate
+    $entraToken = Get-MSEntraAccessToken -Certificate $certificate
 
-    # Create access token
-    $actionMessage = "creating access token"
-    $entraToken = Get-MSEntraAccessToken -Certificate $certificate -AppId $EntraIdAppId -TenantId $EntraIdTenantId
-
-    # Create headers
-    $actionMessage = "creating headers"
-    $headers = @{
-        "Authorization"    = "Bearer $($entraToken)"
-        "Accept"           = "application/json"
-        "Content-Type"     = "application/json"
+    #Add the authorization header to the request
+    $authorization = @{
+        Authorization  = "Bearer $entraToken";
+        'Content-Type' = "application/json";
+        Accept         = "application/json";
         "ConsistencyLevel" = "eventual" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)
-    }
+    } 
 
     # Get Microsoft Entra ID Users
     # API docs: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0&tabs=http
@@ -878,7 +869,7 @@ try {
     do {
         $getMicrosoftEntraIDUsersSplatParams = @{
             Uri         = "https://graph.microsoft.com/v1.0/users?$filter&`$select=$($propertiesToSelect -join ',')&`$top=999&`$count=true"
-            Headers     = $headers
+            Headers     = $authorization
             Method      = "GET"
             Verbose     = $false
             ErrorAction = "Stop"
@@ -960,7 +951,7 @@ if(-not[String]::IsNullOrEmpty($delegatedFormAccessGroupNames)){
             $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
             $delegatedFormAccessGroupGuid = $response.groupGuid
             $delegatedFormAccessGroupGuids += $delegatedFormAccessGroupGuid
-        
+            
             Write-Information "HelloID (access)group '$group' successfully found$(if ($script:debugLogging -eq $true) { ": " + $delegatedFormAccessGroupGuid })"
         } catch {
             Write-Error "HelloID (access)group '$group', message: $_"
@@ -977,10 +968,10 @@ foreach($category in $delegatedFormCategories) {
         $uri = ($script:PortalBaseUrl +"api/v1/delegatedformcategories/$category")
         $response = Invoke-RestMethod -Method Get -Uri $uri -Headers $script:headers -ContentType "application/json" -Verbose:$false
         $response = $response | Where-Object {$_.name.en -eq $category}
-    
+        
         $tmpGuid = $response.delegatedFormCategoryGuid
         $delegatedFormCategoryGuids += $tmpGuid
-    
+        
         Write-Information "HelloID Delegated Form category '$category' successfully found$(if ($script:debugLogging -eq $true) { ": " + $tmpGuid })"
     } catch {
         Write-Warning "HelloID Delegated Form category '$category' not found"
@@ -1006,7 +997,7 @@ $delegatedFormName = @'
 Teams - Create Team
 '@
 $tmpTask = @'
-{"name":"Teams - Create Team","script":"# variables configured in form:\r\n$displayName = $form.DisplayName\r\n$description = $form.Description\r\n$visibility = $form.visibility\r\n$owners = $form.owners\r\n\r\n# Global variables\r\n# Outcommented as these are set from Global Variables\r\n# $EntraIdTenantId = \"\"\r\n# $EntraIdAppId = \"\"\r\n# $EntraIdCertificateBase64String = \"\"\r\n# $EntraIdCertificatePassword = \"\"\r\n\r\n# Enable TLS1.2\r\n[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor [System.Net.SecurityProtocolType]::Tls12\r\n\r\n# Set debug logging\r\n$VerbosePreference = \"SilentlyContinue\"\r\n$InformationPreference = \"Continue\"\r\n$WarningPreference = \"Continue\"\r\n\r\n#region functions\r\nfunction Resolve-MicrosoftGraphAPIError {\r\n    [CmdletBinding()]\r\n    param (\r\n        [Parameter(Mandatory)]\r\n        [object]\r\n        $ErrorObject\r\n    )\r\n    process {\r\n        $httpErrorObj = [PSCustomObject]@{\r\n            ScriptLineNumber = $ErrorObject.InvocationInfo.ScriptLineNumber\r\n            Line             = $ErrorObject.InvocationInfo.Line\r\n            ErrorDetails     = $ErrorObject.Exception.Message\r\n            FriendlyMessage  = $ErrorObject.Exception.Message\r\n        }\r\n        if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {\r\n            $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message\r\n        }\r\n        elseif ($ErrorObject.Exception.GetType().FullName -eq \u0027System.Net.WebException\u0027) {\r\n            if ($null -ne $ErrorObject.Exception.Response) {\r\n                $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()\r\n                if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {\r\n                    $httpErrorObj.ErrorDetails = $streamReaderResponse\r\n                }\r\n            }\r\n        }\r\n        try {\r\n            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json -ErrorAction Stop)\r\n            if ($errorDetailsObject.error_description) {\r\n                $httpErrorObj.FriendlyMessage = $errorDetailsObject.error_description\r\n            }\r\n            elseif ($errorDetailsObject.error.message) {\r\n                $httpErrorObj.FriendlyMessage = \"$($errorDetailsObject.error.code): $($errorDetailsObject.error.message)\"\r\n            }\r\n            elseif ($errorDetailsObject.error.details.message) {\r\n                $httpErrorObj.FriendlyMessage = \"$($errorDetailsObject.error.details.code): $($errorDetailsObject.error.details.message)\"\r\n            }\r\n            else {\r\n                $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails\r\n            }\r\n        }\r\n        catch {\r\n            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails\r\n        }\r\n        Write-Output $httpErrorObj\r\n    }\r\n}\r\n\r\n\r\nfunction Get-MSEntraAccessToken {\r\n    [CmdletBinding()]\r\n    param(\r\n        [Parameter(Mandatory)]\r\n        [ValidateNotNull()]\r\n        $Certificate,\r\n        \r\n        [Parameter(Mandatory)]\r\n        [ValidateNotNullOrEmpty()]\r\n        [string]\r\n        $AppId,\r\n        \r\n        [Parameter(Mandatory)]\r\n        [ValidateNotNullOrEmpty()]\r\n        [string]\r\n        $TenantId\r\n    )\r\n    try {\r\n        # Get the DER encoded bytes of the certificate\r\n        $derBytes = $Certificate.RawData\r\n\r\n        # Compute the SHA-256 hash of the DER encoded bytes\r\n        $sha256 = [System.Security.Cryptography.SHA256]::Create()\r\n        $hashBytes = $sha256.ComputeHash($derBytes)\r\n        $base64Thumbprint = [System.Convert]::ToBase64String($hashBytes).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\r\n\r\n        # Create a JWT (JSON Web Token) header\r\n        $header = @{\r\n            \u0027alg\u0027      = \u0027RS256\u0027\r\n            \u0027typ\u0027      = \u0027JWT\u0027\r\n            \u0027x5t#S256\u0027 = $base64Thumbprint\r\n        } | ConvertTo-Json\r\n        $base64Header = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($header))\r\n\r\n        # Calculate the Unix timestamp (seconds since 1970-01-01T00:00:00Z) for \u0027exp\u0027, \u0027nbf\u0027 and \u0027iat\u0027\r\n        $currentUnixTimestamp = [math]::Round(((Get-Date).ToUniversalTime() - ([datetime]\u00271970-01-01T00:00:00Z\u0027).ToUniversalTime()).TotalSeconds)\r\n\r\n        # Create a JWT payload\r\n        $payload = [Ordered]@{\r\n            \u0027iss\u0027 = \"$($AppId)\"\r\n            \u0027sub\u0027 = \"$($AppId)\"\r\n            \u0027aud\u0027 = \"https://login.microsoftonline.com/$($TenantId)/oauth2/token\"\r\n            \u0027exp\u0027 = ($currentUnixTimestamp + 3600) # Expires in 1 hour\r\n            \u0027nbf\u0027 = ($currentUnixTimestamp - 300) # Not before 5 minutes ago\r\n            \u0027iat\u0027 = $currentUnixTimestamp\r\n            \u0027jti\u0027 = [Guid]::NewGuid().ToString()\r\n        } | ConvertTo-Json\r\n        $base64Payload = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($payload)).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\r\n\r\n        # Extract the private key from the certificate\r\n        if (-not $Certificate.HasPrivateKey -or -not $Certificate.PrivateKey) {\r\n            throw \"The certificate does not have a private key.\"\r\n        }\r\n        $rsaPrivate = $Certificate.PrivateKey\r\n        $rsa = [System.Security.Cryptography.RSACryptoServiceProvider]::new()\r\n        $rsa.ImportParameters($rsaPrivate.ExportParameters($true))\r\n\r\n        # Sign the JWT\r\n        $signatureInput = \"$base64Header.$base64Payload\"\r\n        $signature = $rsa.SignData([Text.Encoding]::UTF8.GetBytes($signatureInput), \u0027SHA256\u0027)\r\n        $base64Signature = [System.Convert]::ToBase64String($signature).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\r\n\r\n        # Create the JWT token\r\n        $jwtToken = \"$($base64Header).$($base64Payload).$($base64Signature)\"\r\n\r\n        $createEntraAccessTokenBody = @{\r\n            grant_type            = \u0027client_credentials\u0027\r\n            client_id             = $AppId\r\n            client_assertion_type = \u0027urn:ietf:params:oauth:client-assertion-type:jwt-bearer\u0027\r\n            client_assertion      = $jwtToken\r\n            resource              = \u0027https://graph.microsoft.com\u0027\r\n        }\r\n\r\n        $createEntraAccessTokenSplatParams = @{\r\n            Uri         = \"https://login.microsoftonline.com/$($TenantId)/oauth2/token\"\r\n            Body        = $createEntraAccessTokenBody\r\n            Method      = \u0027POST\u0027\r\n            ContentType = \u0027application/x-www-form-urlencoded\u0027\r\n            Verbose     = $false\r\n            ErrorAction = \u0027Stop\u0027\r\n        }\r\n\r\n        $createEntraAccessTokenResponse = Invoke-RestMethod @createEntraAccessTokenSplatParams\r\n        Write-Output $createEntraAccessTokenResponse.access_token\r\n    }\r\n    catch {\r\n        $PSCmdlet.ThrowTerminatingError($_)\r\n    }\r\n}\r\n\r\nfunction Get-MSEntraCertificate {\r\n    [CmdletBinding()]\r\n    param(\r\n        [Parameter(Mandatory)]\r\n        [ValidateNotNullOrEmpty()]\r\n        [string]\r\n        $CertificateBase64String,\r\n        \r\n        [Parameter(Mandatory)]\r\n        [ValidateNotNullOrEmpty()]\r\n        [string]\r\n        $CertificatePassword\r\n    )\r\n    try {\r\n        $rawCertificate = [system.convert]::FromBase64String($CertificateBase64String)\r\n        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $CertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)\r\n        Write-Output $certificate\r\n    }\r\n    catch {\r\n        $PSCmdlet.ThrowTerminatingError($_)\r\n    }\r\n}\r\n#endregion functions\r\n\r\ntry {\r\n    # Convert base64 certificate string to certificate object\r\n    $actionMessage = \"converting base64 certificate string to certificate object\"\r\n    $certificate = Get-MSEntraCertificate -CertificateBase64String $EntraIdCertificateBase64String -CertificatePassword $EntraIdCertificatePassword\r\n\r\n    # Create access token\r\n    $actionMessage = \"creating access token\"\r\n    $entraToken = Get-MSEntraAccessToken -Certificate $certificate -AppId $EntraIdAppId -TenantId $EntraIdTenantId\r\n\r\n    # Create headers\r\n    $actionMessage = \"creating headers\"\r\n    $headers = @{\r\n        \"Authorization\"    = \"Bearer $($entraToken)\"\r\n        \"Accept\"           = \"application/json\"\r\n        \"Content-Type\"     = \"application/json\"\r\n        \"ConsistencyLevel\" = \"eventual\" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)\r\n    }\r\n    \r\n    $actionMessage = \"creating team\"\r\n\r\n    $body = @{\r\n        \"Template@odata.bind\" = \"https://graph.microsoft.com/v1.0/teamsTemplates(\u0027standard\u0027)\"\r\n        \"DisplayName\"         = $displayName\r\n        \"Description\"         = $description\r\n        \"visibility\"          = $visibility\r\n        \"Members\"             = @()\r\n    }\r\n\r\n    # API only supports a single member during team creation.\r\n    # Add the first owner at creation time and add remaining owners afterwards.\r\n\r\n    $body.Members += @{\r\n        \"@odata.type\"     = \"#microsoft.graph.aadUserConversationMember\"\r\n        roles             = @(\"owner\")\r\n        \"user@odata.bind\" = \"https://graph.microsoft.com/v1.0/users/$($owners[0].id)\"\r\n    }\r\n\r\n    $createTeamSplatParams = @{\r\n        Uri         = \"https://graph.microsoft.com/v1.0/teams\"\r\n        Body        = ($body | ConvertTo-Json -Depth 10)\r\n        Headers     = $headers\r\n        Method      = \u0027POST\u0027\r\n        ContentType = \u0027application/json\u0027\r\n        Verbose     = $false\r\n        ErrorAction = \u0027Stop\u0027\r\n    }\r\n    $createTeamResponse = Invoke-WebRequest @createTeamSplatParams\r\n\r\n    Write-Information \"Successfully created team [$displayName] with description [$description] and owner [$($owners[0].displayName)].\"\r\n\r\n    $teamId = $null\r\n    $locationHeader = [string]$createTeamResponse.Headers[\u0027Location\u0027]\r\n\r\n    # Team creation is asynchronous and typically returns 202 Accepted.\r\n    if ($createTeamResponse.StatusCode -eq 202) {\r\n\r\n        $actionMessage = \"adding additional owners\"\r\n        Start-Sleep -Seconds 5\r\n\r\n        if ([string]::IsNullOrEmpty($locationHeader)) {\r\n            throw \"Team creation returned 202 Accepted but did not include a Location header for operation status.\"\r\n        }\r\n\r\n        $locationMatch = [regex]::Match($locationHeader, \"^/teams\\(\u0027([^\u0027]+)\u0027\\)/operations\\(\u0027([^\u0027]+)\u0027\\)$\")\r\n        if (-not $locationMatch.Success) {\r\n            throw \"Location header format is unexpected: [$locationHeader]\"\r\n        }\r\n        $teamId = $locationMatch.Groups[1].Value\r\n\r\n        if ($locationHeader.StartsWith(\"http\")) {\r\n            $operationUri = $locationHeader\r\n        }\r\n        else {\r\n            $operationUri = \"https://graph.microsoft.com/v1.0$locationHeader\"\r\n        }\r\n        $maxPollAttempts = 5\r\n        $pollDelaySeconds = 30\r\n\r\n        for ($attempt = 1; $attempt -le $maxPollAttempts; $attempt++) {\r\n            $operation = Invoke-RestMethod -Uri $operationUri -Headers $headers -Method \u0027GET\u0027 -ErrorAction Stop\r\n\r\n            if ($operation.status -eq \u0027succeeded\u0027) {\r\n                break\r\n            }\r\n\r\n            if ($operation.status -eq \u0027failed\u0027) {\r\n                throw \"Team creation operation failed. Status: [$($operation.status)]. Error: [$($operation.error.message)]\"\r\n            }\r\n\r\n            Start-Sleep -Seconds $pollDelaySeconds\r\n        }\r\n\r\n        if ($operation.status -ne \u0027succeeded\u0027) {\r\n            throw \"Timed out waiting for team creation operation to complete. Last status: [$($operation.status)]\"\r\n        }\r\n        \r\n        if ([string]::IsNullOrEmpty($teamId)) {\r\n            throw \"Unable to determine Team ID from Graph create team response headers.\"\r\n            \r\n        }\r\n\r\n        if ($owners.Count -gt 1) {\r\n            $additionalMembers = @()\r\n            foreach ($owner in ($owners | Select-Object -Skip 1)) {\r\n                $additionalMembers += @{\r\n                    \"@odata.type\"     = \"#microsoft.graph.aadUserConversationMember\"\r\n                    roles             = @(\"owner\")\r\n                    \"user@odata.bind\" = \"https://graph.microsoft.com/v1.0/users/$($owner.id)\"\r\n                }\r\n            }\r\n\r\n            $addMembersBody = @{\r\n                values = $additionalMembers\r\n            }\r\n\r\n            $addMembersSplatParams = @{\r\n                Uri         = \"https://graph.microsoft.com/v1.0/teams/$($teamId)/members/add\"\r\n                Body        = ($addMembersBody | ConvertTo-Json -Depth 10)\r\n                Headers     = $headers\r\n                Method      = \u0027POST\u0027\r\n                ContentType = \u0027application/json\u0027\r\n                Verbose     = $false\r\n                ErrorAction = \u0027Stop\u0027\r\n            }\r\n            $null = Invoke-RestMethod @addMembersSplatParams\r\n\r\n            Write-Information \"Successfully added [$(($owners | Select-Object -Skip 1 | ForEach-Object { $_.displayName }) -join \u0027, \u0027)] as additional owners to team [$displayName]\"\r\n        }\r\n    }\r\n\r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"MicrosoftTeams\" # optional (free format text) \r\n        Message           = \"Successfully created team [$displayName] with description [$description] and owners [$(($owners | ForEach-Object { $_.displayName }) -join \u0027, \u0027)]\" # required (free format text)\r\n        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $displayName # optional (free format text) \r\n        TargetIdentifier  = $([string]$teamId) # optional (free format text) \r\n    }\r\n    #send result back  \r\n    Write-Information -Tags \"Audit\" -MessageData $log    \r\n}\r\ncatch {\r\n    $ex = $PSItem\r\n    if ($($ex.Exception.GetType().FullName -eq \u0027Microsoft.PowerShell.Commands.HttpResponseException\u0027) -or\r\n        $($ex.Exception.GetType().FullName -eq \u0027System.Net.WebException\u0027)) {\r\n        $errorObj = Resolve-MicrosoftGraphAPIError -ErrorObject $ex\r\n        $auditMessage = \"Error $($actionMessage). Error: $($errorObj.FriendlyMessage)\"\r\n        $warningMessage = \"Error at Line [$($errorObj.ScriptLineNumber)]: $($errorObj.Line). Error: $($errorObj.ErrorDetails)\"\r\n    }\r\n    else {\r\n        $auditMessage = \"Error $($actionMessage). Error: $($ex.Exception.Message)\"\r\n        $warningMessage = \"Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)\"\r\n    }\r\n    $Log = @{\r\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \r\n        System            = \"MicrosoftTeams\" # optional (free format text) \r\n        Message           = $auditMessage # required (free format text) \r\n        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \r\n        TargetDisplayName = $displayName # optional (free format text) \r\n        TargetIdentifier  = $([string]$teamId) # optional (free format text) \r\n    }\r\n    Write-Information -Tags \"Audit\" -MessageData $log\r\n    Write-Warning $warningMessage\r\n    Write-Error $auditMessage\r\n}","runInCloud":true}
+{"name":"Teams - Create Team","script":"#######################################################################\n# Template: HelloID SA Delegated form task\n# Name: Teams - Create Team\n# Date: 01-04-2026\n#######################################################################\n\n# For basic information about delegated form tasks see:\n# https://docs.helloid.com/en/service-automation/delegated-forms/delegated-form-tasks.html\n\n# Service automation variables:\n# https://docs.helloid.com/en/service-automation/service-automation-variables.html\n\n#region init\n\n$VerbosePreference = \"SilentlyContinue\"\n$InformationPreference = \"Continue\"\n$WarningPreference = \"Continue\"\n\n# global variables (Automation --\u003e Variable libary):\n# Outcommented as these are set from Global Variables\n# $EntraIdTenantId = \"\"\n# $EntraIdAppId = \"\"\n# $EntraIdCertificateBase64String = \"\"\n# $EntraIdCertificatePassword = \"\"\n\n# variables configured in form:\n$displayName = $form.DisplayName\n$description = $form.Description\n$visibility = $form.visibility\n$owners = $form.owners\n\n#endregion init\n\n#region functions\nfunction Resolve-MicrosoftGraphAPIError {\n    [CmdletBinding()]\n    param (\n        [Parameter(Mandatory)]\n        [object]\n        $ErrorObject\n    )\n    process {\n        $httpErrorObj = [PSCustomObject]@{\n            ScriptLineNumber = $ErrorObject.InvocationInfo.ScriptLineNumber\n            Line             = $ErrorObject.InvocationInfo.Line\n            ErrorDetails     = $ErrorObject.Exception.Message\n            FriendlyMessage  = $ErrorObject.Exception.Message\n        }\n        if (-not [string]::IsNullOrEmpty($ErrorObject.ErrorDetails.Message)) {\n            $httpErrorObj.ErrorDetails = $ErrorObject.ErrorDetails.Message\n        }\n        elseif ($ErrorObject.Exception.GetType().FullName -eq \u0027System.Net.WebException\u0027) {\n            if ($null -ne $ErrorObject.Exception.Response) {\n                $streamReaderResponse = [System.IO.StreamReader]::new($ErrorObject.Exception.Response.GetResponseStream()).ReadToEnd()\n                if (-not [string]::IsNullOrEmpty($streamReaderResponse)) {\n                    $httpErrorObj.ErrorDetails = $streamReaderResponse\n                }\n            }\n        }\n        try {\n            $errorDetailsObject = ($httpErrorObj.ErrorDetails | ConvertFrom-Json -ErrorAction Stop)\n            if ($errorDetailsObject.error_description) {\n                $httpErrorObj.FriendlyMessage = $errorDetailsObject.error_description\n            }\n            elseif ($errorDetailsObject.error.message) {\n                $httpErrorObj.FriendlyMessage = \"$($errorDetailsObject.error.code): $($errorDetailsObject.error.message)\"\n            }\n            elseif ($errorDetailsObject.error.details.message) {\n                $httpErrorObj.FriendlyMessage = \"$($errorDetailsObject.error.details.code): $($errorDetailsObject.error.details.message)\"\n            }\n            else {\n                $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails\n            }\n        }\n        catch {\n            $httpErrorObj.FriendlyMessage = $httpErrorObj.ErrorDetails\n        }\n        Write-Output $httpErrorObj\n    }\n}\n\nfunction Get-MSEntraAccessToken {\n    [CmdletBinding()]\n    param(\n        [Parameter(Mandatory)]\n        $Certificate\n    )\n    try {\n        # Get the DER encoded bytes of the certificate\n        $derBytes = $Certificate.RawData\n\n        # Compute the SHA-256 hash of the DER encoded bytes\n        $sha256 = [System.Security.Cryptography.SHA256]::Create()\n        $hashBytes = $sha256.ComputeHash($derBytes)\n        $base64Thumbprint = [System.Convert]::ToBase64String($hashBytes).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\n\n        # Create a JWT (JSON Web Token) header\n        $header = @{\n            \u0027alg\u0027      = \u0027RS256\u0027\n            \u0027typ\u0027      = \u0027JWT\u0027\n            \u0027x5t#S256\u0027 = $base64Thumbprint\n        } | ConvertTo-Json\n        $base64Header = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($header))\n\n        # Calculate the Unix timestamp (seconds since 1970-01-01T00:00:00Z) for \u0027exp\u0027, \u0027nbf\u0027 and \u0027iat\u0027\n        $currentUnixTimestamp = [math]::Round(((Get-Date).ToUniversalTime() - ([datetime]\u00271970-01-01T00:00:00Z\u0027).ToUniversalTime()).TotalSeconds)\n\n        # Create a JWT payload\n        $payload = [Ordered]@{\n            \u0027iss\u0027 = \"$entraidappid\"\n            \u0027sub\u0027 = \"$entraidappid\"\n            \u0027aud\u0027 = \"https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token\"\n            \u0027exp\u0027 = ($currentUnixTimestamp + 3600) # Expires in 1 hour\n            \u0027nbf\u0027 = ($currentUnixTimestamp - 300) # Not before 5 minutes ago\n            \u0027iat\u0027 = $currentUnixTimestamp\n            \u0027jti\u0027 = [Guid]::NewGuid().ToString()\n        } | ConvertTo-Json\n        $base64Payload = [System.Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($payload)).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\n\n        # Extract the private key from the certificate\n        $rsaPrivate = $Certificate.PrivateKey\n        $rsa = [System.Security.Cryptography.RSACryptoServiceProvider]::new()\n        $rsa.ImportParameters($rsaPrivate.ExportParameters($true))\n\n        # Sign the JWT\n        $signatureInput = \"$base64Header.$base64Payload\"\n        $signature = $rsa.SignData([Text.Encoding]::UTF8.GetBytes($signatureInput), \u0027SHA256\u0027)\n        $base64Signature = [System.Convert]::ToBase64String($signature).Replace(\u0027+\u0027, \u0027-\u0027).Replace(\u0027/\u0027, \u0027_\u0027).Replace(\u0027=\u0027, \u0027\u0027)\n\t\n        # Extract the private key from the certificate\n        if (-not $Certificate.HasPrivateKey -or -not $Certificate.PrivateKey) {\n            throw \"The certificate does not have a private key.\"\n        }\n\n        # Create the JWT token\n        $jwtToken = \"$($base64Header).$($base64Payload).$($base64Signature)\"\n\n        $createEntraAccessTokenBody = @{\n            grant_type            = \u0027client_credentials\u0027\n            client_id             = $entraidappid\n            client_assertion_type = \u0027urn:ietf:params:oauth:client-assertion-type:jwt-bearer\u0027\n            client_assertion      = $jwtToken\n            resource              = \u0027https://graph.microsoft.com\u0027\n        }\n\n        $createEntraAccessTokenSplatParams = @{\n            Uri         = \"https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token\"\n            Body        = $createEntraAccessTokenBody\n            Method      = \u0027POST\u0027\n            ContentType = \u0027application/x-www-form-urlencoded\u0027\n            Verbose     = $false\n            ErrorAction = \u0027Stop\u0027\n        }\n\n        $createEntraAccessTokenResponse = Invoke-RestMethod @createEntraAccessTokenSplatParams\n        Write-Output $createEntraAccessTokenResponse.access_token\n    }\n    catch {\n        $PSCmdlet.ThrowTerminatingError($_)\n    }\n}\n\nfunction Get-MSEntraCertificate {\n    [CmdletBinding()]\n    param()\n    try {\n        $rawCertificate = [system.convert]::FromBase64String($EntraIdCertificateBase64String)\n        $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($rawCertificate, $EntraIdCertificatePassword, [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::Exportable)\n        Write-Output $certificate\n    }\n    catch {\n        $PSCmdlet.ThrowTerminatingError($_)\n    }\n}\n\n#endregion functions\n\ntry {\n    # Setup Connection with Entra/Exo\n    Write-Verbose \u0027connecting to MS-Entra\u0027\n    $certificate = Get-MSEntraCertificate\n    $entraToken = Get-MSEntraAccessToken -Certificate $certificate\n      \n    #Add the authorization header to the request\n    $authorization = @{\n        Authorization  = \"Bearer $entraToken\";\n        \u0027Content-Type\u0027 = \"application/json\";\n        Accept         = \"application/json\";\n    } \n    \n    $actionMessage = \"creating team\"\n\n    $body = @{\n        \"Template@odata.bind\" = \"https://graph.microsoft.com/v1.0/teamsTemplates(\u0027standard\u0027)\"\n        \"DisplayName\"         = $displayName\n        \"Description\"         = $description\n        \"visibility\"          = $visibility\n        \"Members\"             = @()\n    }\n\n    # API only supports a single member during team creation.\n    # Add the first owner at creation time and add remaining owners afterwards.\n\n    $body.Members += @{\n        \"@odata.type\"     = \"#microsoft.graph.aadUserConversationMember\"\n        roles             = @(\"owner\")\n        \"user@odata.bind\" = \"https://graph.microsoft.com/v1.0/users/$($owners[0].id)\"\n        \"ConsistencyLevel\" = \"eventual\" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)\n    }\n\n    $createTeamSplatParams = @{\n        Uri         = \"https://graph.microsoft.com/v1.0/teams\"\n        Body        = ($body | ConvertTo-Json -Depth 10)\n        Headers     = $authorization\n        Method      = \u0027POST\u0027\n        ContentType = \u0027application/json\u0027\n        Verbose     = $false\n        ErrorAction = \u0027Stop\u0027\n    }\n    $createTeamResponse = Invoke-WebRequest @createTeamSplatParams\n\n    Write-Information \"Successfully created team [$displayName] with description [$description] and owner [$($owners[0].displayName)].\"\n\n    $teamId = $null\n    $locationHeader = [string]$createTeamResponse.Headers[\u0027Location\u0027]\n\n    # Team creation is asynchronous and typically returns 202 Accepted.\n    if ($createTeamResponse.StatusCode -eq 202) {\n\n        $actionMessage = \"adding additional owners\"\n        Start-Sleep -Seconds 5\n\n        if ([string]::IsNullOrEmpty($locationHeader)) {\n            throw \"Team creation returned 202 Accepted but did not include a Location header for operation status.\"\n        }\n\n        $locationMatch = [regex]::Match($locationHeader, \"^/teams\\(\u0027([^\u0027]+)\u0027\\)/operations\\(\u0027([^\u0027]+)\u0027\\)$\")\n        if (-not $locationMatch.Success) {\n            throw \"Location header format is unexpected: [$locationHeader]\"\n        }\n        $teamId = $locationMatch.Groups[1].Value\n\n        if ($locationHeader.StartsWith(\"http\")) {\n            $operationUri = $locationHeader\n        }\n        else {\n            $operationUri = \"https://graph.microsoft.com/v1.0$locationHeader\"\n        }\n        $maxPollAttempts = 5\n        $pollDelaySeconds = 30\n\n        for ($attempt = 1; $attempt -le $maxPollAttempts; $attempt++) {\n            $operation = Invoke-RestMethod -Uri $operationUri -Headers $headers -Method \u0027GET\u0027 -ErrorAction Stop\n\n            if ($operation.status -eq \u0027succeeded\u0027) {\n                break\n            }\n\n            if ($operation.status -eq \u0027failed\u0027) {\n                throw \"Team creation operation failed. Status: [$($operation.status)]. Error: [$($operation.error.message)]\"\n            }\n\n            Start-Sleep -Seconds $pollDelaySeconds\n        }\n\n        if ($operation.status -ne \u0027succeeded\u0027) {\n            throw \"Timed out waiting for team creation operation to complete. Last status: [$($operation.status)]\"\n        }\n        \n        if ([string]::IsNullOrEmpty($teamId)) {\n            throw \"Unable to determine Team ID from Graph create team response headers.\"\n            \n        }\n\n        if ($owners.Count -gt 1) {\n            $additionalMembers = @()\n            foreach ($owner in ($owners | Select-Object -Skip 1)) {\n                $additionalMembers += @{\n                    \"@odata.type\"     = \"#microsoft.graph.aadUserConversationMember\"\n                    roles             = @(\"owner\")\n                    \"user@odata.bind\" = \"https://graph.microsoft.com/v1.0/users/$($owner.id)\"\n                }\n            }\n\n            $addMembersBody = @{\n                values = $additionalMembers\n            }\n\n            $addMembersSplatParams = @{\n                Uri         = \"https://graph.microsoft.com/v1.0/teams/$($teamId)/members/add\"\n                Body        = ($addMembersBody | ConvertTo-Json -Depth 10)\n                Headers     = $headers\n                Method      = \u0027POST\u0027\n                ContentType = \u0027application/json\u0027\n                Verbose     = $false\n                ErrorAction = \u0027Stop\u0027\n            }\n            $null = Invoke-RestMethod @addMembersSplatParams\n\n            Write-Information \"Successfully added [$(($owners | Select-Object -Skip 1 | ForEach-Object { $_.displayName }) -join \u0027, \u0027)] as additional owners to team [$displayName]\"\n        }\n    }\n\n    $Log = @{\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \n        System            = \"MicrosoftTeams\" # optional (free format text) \n        Message           = \"Successfully created team [$displayName] with description [$description] and owners [$(($owners | ForEach-Object { $_.displayName }) -join \u0027, \u0027)]\" # required (free format text)\n        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \n        TargetDisplayName = $displayName # optional (free format text) \n        TargetIdentifier  = $([string]$teamId) # optional (free format text) \n    }\n    #send result back  \n    Write-Information -Tags \"Audit\" -MessageData $log    \n}\ncatch {\n    $ex = $PSItem\n    if ($($ex.Exception.GetType().FullName -eq \u0027Microsoft.PowerShell.Commands.HttpResponseException\u0027) -or\n        $($ex.Exception.GetType().FullName -eq \u0027System.Net.WebException\u0027)) {\n        $errorObj = Resolve-MicrosoftGraphAPIError -ErrorObject $ex\n        $auditMessage = \"Error $($actionMessage). Error: $($errorObj.FriendlyMessage)\"\n        $warningMessage = \"Error at Line [$($errorObj.ScriptLineNumber)]: $($errorObj.Line). Error: $($errorObj.ErrorDetails)\"\n    }\n    else {\n        $auditMessage = \"Error $($actionMessage). Error: $($ex.Exception.Message)\"\n        $warningMessage = \"Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)\"\n    }\n    $Log = @{\n        Action            = \"CreateResource\" # optional. ENUM (undefined = default) \n        System            = \"MicrosoftTeams\" # optional (free format text) \n        Message           = $auditMessage # required (free format text) \n        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) \n        TargetDisplayName = $displayName # optional (free format text) \n        TargetIdentifier  = $([string]$teamId) # optional (free format text) \n    }\n    Write-Information -Tags \"Audit\" -MessageData $log\n    Write-Warning $warningMessage\n    Write-Error $auditMessage\n}\n","runInCloud":true}
 '@ 
 
 Invoke-HelloIDDelegatedForm -DelegatedFormName $delegatedFormName -DynamicFormGuid $dynamicFormGuid -AccessGroups $delegatedFormAccessGroupGuids -Categories $delegatedFormCategoryGuids -UseFaIcon "True" -FaIcon "fa fa-plus-square" -task $tmpTask -returnObject ([Ref]$delegatedFormRef) 

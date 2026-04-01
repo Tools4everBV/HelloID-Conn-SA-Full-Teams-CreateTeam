@@ -1,7 +1,7 @@
 #######################################################################
 # Template: HelloID SA Powershell data source
-# Name:     Teams - Create Team | validation
-# Date:     04-03-2026
+# Name:     teams-create-team | Validation
+# Date:     01-04-2026
 #######################################################################
 
 # For basic information about powershell data sources see:
@@ -61,8 +61,8 @@ function Get-MSEntraAccessToken {
 
         # Create a JWT payload
         $payload = [Ordered]@{
-            'iss' = "$EntraIdAppId"
-            'sub' = "$EntraIdAppId"
+            'iss' = "$entraidappid"
+            'sub' = "$entraidappid"
             'aud' = "https://login.microsoftonline.com/$EntraIdTenantId/oauth2/token"
             'exp' = ($currentUnixTimestamp + 3600) # Expires in 1 hour
             'nbf' = ($currentUnixTimestamp - 300) # Not before 5 minutes ago
@@ -91,7 +91,7 @@ function Get-MSEntraAccessToken {
 
         $createEntraAccessTokenBody = @{
             grant_type            = 'client_credentials'
-            client_id             = $EntraIdAppId
+            client_id             = $entraidappid
             client_assertion_type = 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
             client_assertion      = $jwtToken
             resource              = 'https://graph.microsoft.com'
@@ -126,6 +126,7 @@ function Get-MSEntraCertificate {
         $PSCmdlet.ThrowTerminatingError($_)
     }
 }
+
 function Resolve-MicrosoftGraphAPIError {
     [CmdletBinding()]
     param (
@@ -180,16 +181,16 @@ try {
     $actionMessage = "checking Entra ID for uniqueness"
 
     # Setup Connection with Entra/Exo
-    Write-Information 'Checking Entra ID for uniqueness, connecting to MS-Entra'
+    Write-Verbose 'connecting to MS-Entra'
     $certificate = Get-MSEntraCertificate
     $entraToken = Get-MSEntraAccessToken -Certificate $certificate
     
     #Add the authorization header to the request
     $authorization = @{
-        Authorization    = "Bearer $entraToken"
-        'Content-Type'   = "application/json"
-        Accept           = "application/json"
-        ConsistencyLevel = "eventual"
+        Authorization  = "Bearer $entraToken";
+        'Content-Type' = "application/json";
+        Accept         = "application/json";
+        "ConsistencyLevel" = "eventual" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)
     } 
 
     $graphApiUrl = "https://graph.microsoft.com/v1.0/groups"
@@ -212,7 +213,7 @@ try {
         $entraIDGroups += $entraIDGroupsResponse.value
     }  
 
-    Write-Warning "groups: [$($entraIDGroups | ConvertTo-Json)]"
+    Write-Information "Found [$($entraIDGroups.Count)] groups"
 
     foreach ($record in $entraIDGroups) {
         if ($record.displayName -eq $displayName) {
@@ -257,7 +258,7 @@ try {
         $outputMessage += "`n" + $($text.Message)
     }
 
-    Write-Output $outputMessage      
+    Write-Output $outputMessage
 }
 catch {
     $ex = $PSItem
@@ -273,7 +274,6 @@ catch {
     }
     Write-Warning $warningMessage
     Write-Error $auditMessage
-}  
+}
 #endregion lookup
-
 
