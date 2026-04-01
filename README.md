@@ -3,12 +3,12 @@
 This HelloID Service Automation Delegated Form can create a Microsoft Teams Team
 
 ## Versioning
-| Version | Description | Date |
-| - | - | - |
-| 1.2.0   | Updated to Graph API with audit-logging | 2022/10/18  |
-| 1.1.0   | Updated with code for SA agent | 2022/03/14  |
-| 1.0.1   | Added version number and updated all-in-one script | 2021/12/13  |
-| 1.0.0   | Initial release | 2020/12/05  |
+| Version | Description                                        | Date       |
+|---------|----------------------------------------------------|------------|
+| 1.2.0   | Updated to Graph API with audit-logging            | 2022/10/18 |
+| 1.1.0   | Updated with code for SA agent                     | 2022/03/14 |
+| 1.0.1   | Added version number and updated all-in-one script | 2021/12/13 |
+| 1.0.0   | Initial release                                    | 2020/12/05 |
 
 <!-- TABLE OF CONTENTS -->
 ## Table of Contents

@@ -1,141 +1,117 @@
 [
     {
-        "label":  "Details",
-        "fields":  [
-                       {
-                           "key":  "DisplayName",
-                           "templateOptions":  {
-                                                   "label":  "Displayname",
-                                                   "required":  true
-                                               },
-                           "type":  "input",
-                           "summaryVisibility":  "Show",
-                           "requiresTemplateOptions":  true,
-                           "requiresKey":  true,
-                           "requiresDataSource":  false
-                       },
-                       {
-                           "key":  "Description",
-                           "templateOptions":  {
-                                                   "label":  "Description"
-                                               },
-                           "type":  "input",
-                           "summaryVisibility":  "Show",
-                           "requiresTemplateOptions":  true,
-                           "requiresKey":  true,
-                           "requiresDataSource":  false
-                       },
-                       {
-                           "key":  "visibility",
-                           "templateOptions":  {
-                                                   "label":  "Security",
-                                                   "useObjects":  false,
-                                                   "options":  [
-                                                                   "Public",
-                                                                   "Private"
-                                                               ],
-                                                   "required":  true
-                                               },
-                           "type":  "radio",
-                           "defaultValue":  "Public",
-                           "summaryVisibility":  "Show",
-                           "textOrLabel":  "label",
-                           "requiresTemplateOptions":  true,
-                           "requiresKey":  true,
-                           "requiresDataSource":  false
-                       },
-                       {
-                           "key":  "owner",
-                           "templateOptions":  {
-                                                   "label":  "Select owner",
-                                                   "required":  false,
-                                                   "grid":  {
-                                                                "columns":  [
-                                                                                {
-                                                                                    "headerName":  "Id",
-                                                                                    "field":  "Id"
-                                                                                },
-                                                                                {
-                                                                                    "headerName":  "Display Name",
-                                                                                    "field":  "DisplayName"
-                                                                                },
-                                                                                {
-                                                                                    "headerName":  "User",
-                                                                                    "field":  "User"
-                                                                                }
-                                                                            ],
-                                                                "height":  300,
-                                                                "rowSelection":  "single"
-                                                            },
-                                                   "dataSourceConfig":  {
-                                                                            "dataSourceGuid":  "$dataSourceGuid_0",
-                                                                            "input":  {
-                                                                                          "propertyInputs":  [
-
-                                                                                                             ]
-                                                                                      }
-                                                                        },
-                                                   "useFilter":  true,
-                                                   "useDefault":  false
-                                               },
-                           "type":  "grid",
-                           "summaryVisibility":  "Show",
-                           "requiresTemplateOptions":  true,
-                           "requiresKey":  true,
-                           "requiresDataSource":  true
-                       }
-                   ]
+        "key":  "DisplayName",
+        "templateOptions":  {
+                                "label":  "Displayname",
+                                "required":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
     },
     {
-        "label":  "Naming",
-        "fields":  [
-                       {
-                           "key":  "generatedNames",
-                           "templateOptions":  {
-                                                   "label":  "Naming",
-                                                   "required":  true,
-                                                   "grid":  {
-                                                                "columns":  [
-                                                                                {
-                                                                                    "headerName":  "Display Name",
-                                                                                    "field":  "displayName"
-                                                                                },
-                                                                                {
-                                                                                    "headerName":  "Description",
-                                                                                    "field":  "description"
-                                                                                }
-                                                                            ],
-                                                                "height":  300,
-                                                                "rowSelection":  "single"
-                                                            },
-                                                   "dataSourceConfig":  {
-                                                                            "dataSourceGuid":  "$dataSourceGuid_1",
-                                                                            "input":  {
-                                                                                          "propertyInputs":  [
-                                                                                                                 {
-                                                                                                                     "propertyName":  "displayname",
-                                                                                                                     "otherFieldValue":  {
-                                                                                                                                             "otherFieldKey":  "DisplayName"
-                                                                                                                                         }
-                                                                                                                 },
-                                                                                                                 {
-                                                                                                                     "propertyName":  "description",
-                                                                                                                     "otherFieldValue":  {
-                                                                                                                                             "otherFieldKey":  "Description"
-                                                                                                                                         }
-                                                                                                                 }
-                                                                                                             ]
-                                                                                      }
-                                                                        },
-                                                   "useFilter":  true,
-                                                   "useDefault":  false
-                                               },
-                           "type":  "grid",
-                           "summaryVisibility":  "Show",
-                           "requiresTemplateOptions":  true,
-                           "requiresKey":  true,
-                           "requiresDataSource":  true
-                       }
-                   ]
+        "key":  "Description",
+        "templateOptions":  {
+                                "label":  "Description",
+                                "required":  true
+                            },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "visibility",
+        "templateOptions":  {
+                                "label":  "Security",
+                                "useObjects":  false,
+                                "options":  [
+                                                "Private",
+                                                "Public"
+                                            ],
+                                "required":  true
+                            },
+        "type":  "radio",
+        "defaultValue":  "Private",
+        "summaryVisibility":  "Show",
+        "textOrLabel":  "label",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
+    },
+    {
+        "key":  "owners",
+        "templateOptions":  {
+                                "label":  "Select owner(s)",
+                                "required":  true,
+                                "grid":  {
+                                             "columns":  [
+                                                             {
+                                                                 "headerName":  "User Principal Name",
+                                                                 "field":  "userPrincipalName"
+                                                             },
+                                                             {
+                                                                 "headerName":  "Display Name",
+                                                                 "field":  "displayName"
+                                                             }
+                                                         ],
+                                             "height":  300,
+                                             "rowSelection":  "multiple"
+                                         },
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_0",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "useFilter":  true,
+                                "useDefault":  false,
+                                "allowCsvDownload":  true
+                            },
+        "type":  "multiselectgrid",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  true
+    },
+    {
+        "key":  "tiValidation",
+        "templateOptions":  {
+                                "label":  "Validation",
+                                "pattern":  "^Valid:\\s*.*",
+                                "minLength":  1,
+                                "required":  true,
+                                "useDataSource":  true,
+                                "readonly":  true,
+                                "dataSourceConfig":  {
+                                                         "dataSourceGuid":  "$dataSourceGuid_1",
+                                                         "input":  {
+                                                                       "propertyInputs":  [
+                                                                                              {
+                                                                                                  "propertyName":  "displayName",
+                                                                                                  "otherFieldValue":  {
+                                                                                                                          "otherFieldKey":  "DisplayName"
+                                                                                                                      }
+                                                                                              }
+                                                                                          ]
+                                                                   }
+                                                     },
+                                "displayField":  "output"
+                            },
+        "validation":  {
+                           "messages":  {
+                                            "pattern":  "No valid teams"
+                                        }
+                       },
+        "type":  "input",
+        "summaryVisibility":  "Show",
+        "requiresTemplateOptions":  true,
+        "requiresKey":  true,
+        "requiresDataSource":  false
     }
 ]
