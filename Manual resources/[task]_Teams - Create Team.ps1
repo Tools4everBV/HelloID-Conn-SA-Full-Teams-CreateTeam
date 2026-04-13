@@ -250,7 +250,7 @@ try {
         $pollDelaySeconds = 30
 
         for ($attempt = 1; $attempt -le $maxPollAttempts; $attempt++) {
-            $operation = Invoke-RestMethod -Uri $operationUri -Headers $headers -Method 'GET' -ErrorAction Stop
+            $operation = Invoke-RestMethod -Uri $operationUri -Headers $authorization -Method 'GET' -ErrorAction Stop
 
             if ($operation.status -eq 'succeeded') {
                 break
@@ -289,7 +289,7 @@ try {
             $addMembersSplatParams = @{
                 Uri         = "https://graph.microsoft.com/v1.0/teams/$($teamId)/members/add"
                 Body        = ($addMembersBody | ConvertTo-Json -Depth 10)
-                Headers     = $headers
+                Headers     = $authorization
                 Method      = 'POST'
                 ContentType = 'application/json'
                 Verbose     = $false
