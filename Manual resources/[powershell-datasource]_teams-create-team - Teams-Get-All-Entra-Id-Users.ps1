@@ -1,14 +1,14 @@
 #######################################################################
-# Template: HelloID SA Delegated form task
-# Name: Teams - Create Team
-# Date: 01-04-2026
+# Template: HelloID SA Powershell data source
+# Name:     teams-create-team | Teams-Get-All-Entra-Id-Users
+# Date:     01-04-2026
 #######################################################################
 
-# For basic information about delegated form tasks see:
-# https://docs.helloid.com/en/service-automation/delegated-forms/delegated-form-tasks.html
+# For basic information about powershell data sources see:
+# https://docs.helloid.com/en/service-automation/dynamic-forms/data-sources/powershell-data-sources/add,-edit,-or-remove-a-powershell-data-source.html#add-a-powershell-data-source
 
 # Service automation variables:
-# https://docs.helloid.com/en/service-automation/service-automation-variables.html
+# https://docs.helloid.com/en/service-automation/service-automation-variables/service-automation-variable-reference.html
 
 #region init
 
@@ -16,18 +16,32 @@ $VerbosePreference = "SilentlyContinue"
 $InformationPreference = "Continue"
 $WarningPreference = "Continue"
 
-# global variables (Automation --> Variable libary):
+# Fixed values
+$filter = "`$filter=accountEnabled eq true" # Get all enabled users
+
+$propertiesToSelect = @(
+    "id",
+    "userPrincipalName",
+    "displayName",
+    "mail",
+    "description",
+    "department",
+    "jobTitle",
+    "companyName",
+    "accountEnabled"
+) # Properties to select from Microsoft Graph API, comma separated
+
+# global variables (Automation --> Variable library):
 # Outcommented as these are set from Global Variables
 # $EntraIdTenantId = ""
 # $EntraIdAppId = ""
 # $EntraIdCertificateBase64String = ""
 # $EntraIdCertificatePassword = ""
+# $TeamsMailsuffix = ""
 
 # variables configured in form:
-$displayName = $form.DisplayName
-$description = $form.Description
-$visibility = $form.visibility
-$owners = $form.owners
+# $formValue1 = $datasource.<formElementKey>.<value>
+# $formValue2 = $datasource.<formElementKey>
 
 #endregion init
 
@@ -180,137 +194,51 @@ try {
     Write-Verbose 'connecting to MS-Entra'
     $certificate = Get-MSEntraCertificate
     $entraToken = Get-MSEntraAccessToken -Certificate $certificate
-      
+
     #Add the authorization header to the request
     $authorization = @{
         Authorization  = "Bearer $entraToken";
         'Content-Type' = "application/json";
         Accept         = "application/json";
-    } 
-    
-    $actionMessage = "creating team"
-
-    $body = @{
-        "Template@odata.bind" = "https://graph.microsoft.com/v1.0/teamsTemplates('standard')"
-        "DisplayName"         = $displayName
-        "Description"         = $description
-        "visibility"          = $visibility
-        "Members"             = @()
-    }
-
-    # API only supports a single member during team creation.
-    # Add the first owner at creation time and add remaining owners afterwards.
-
-    $body.Members += @{
-        "@odata.type"     = "#microsoft.graph.aadUserConversationMember"
-        roles             = @("owner")
-        "user@odata.bind" = "https://graph.microsoft.com/v1.0/users/$($owners[0].id)"
         "ConsistencyLevel" = "eventual" # Needed to filter on specific attributes (https://docs.microsoft.com/en-us/graph/aad-advanced-queries)
-    }
+    } 
 
-    $createTeamSplatParams = @{
-        Uri         = "https://graph.microsoft.com/v1.0/teams"
-        Body        = ($body | ConvertTo-Json -Depth 10)
-        Headers     = $authorization
-        Method      = 'POST'
-        ContentType = 'application/json'
-        Verbose     = $false
-        ErrorAction = 'Stop'
-    }
-    $createTeamResponse = Invoke-WebRequest @createTeamSplatParams
-
-    Write-Information "Successfully created team [$displayName] with description [$description] and owner [$($owners[0].displayName)]."
-
-    $teamId = $null
-    $locationHeader = [string]$createTeamResponse.Headers['Location']
-
-    # Team creation is asynchronous and typically returns 202 Accepted.
-    if ($createTeamResponse.StatusCode -eq 202) {
-
-        $actionMessage = "adding additional owners"
-        Start-Sleep -Seconds 5
-
-        if ([string]::IsNullOrEmpty($locationHeader)) {
-            throw "Team creation returned 202 Accepted but did not include a Location header for operation status."
+    # Get Microsoft Entra ID Users
+    # API docs: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0&tabs=http
+    $actionMessage = "querying Microsoft Entra ID Users matching search value [$filter]"
+    $microsoftEntraIDUsers = [System.Collections.ArrayList]@()
+    do {
+        $getMicrosoftEntraIDUsersSplatParams = @{
+            Uri         = "https://graph.microsoft.com/v1.0/users?$filter&`$select=$($propertiesToSelect -join ',')&`$top=999&`$count=true"
+            Headers     = $authorization
+            Method      = "GET"
+            Verbose     = $false
+            ErrorAction = "Stop"
         }
-
-        $locationMatch = [regex]::Match($locationHeader, "^/teams\('([^']+)'\)/operations\('([^']+)'\)$")
-        if (-not $locationMatch.Success) {
-            throw "Location header format is unexpected: [$locationHeader]"
-        }
-        $teamId = $locationMatch.Groups[1].Value
-
-        if ($locationHeader.StartsWith("http")) {
-            $operationUri = $locationHeader
-        }
-        else {
-            $operationUri = "https://graph.microsoft.com/v1.0$locationHeader"
-        }
-        $maxPollAttempts = 5
-        $pollDelaySeconds = 30
-
-        for ($attempt = 1; $attempt -le $maxPollAttempts; $attempt++) {
-            $operation = Invoke-RestMethod -Uri $operationUri -Headers $authorization -Method 'GET' -ErrorAction Stop
-
-            if ($operation.status -eq 'succeeded') {
-                break
-            }
-
-            if ($operation.status -eq 'failed') {
-                throw "Team creation operation failed. Status: [$($operation.status)]. Error: [$($operation.error.message)]"
-            }
-
-            Start-Sleep -Seconds $pollDelaySeconds
-        }
-
-        if ($operation.status -ne 'succeeded') {
-            throw "Timed out waiting for team creation operation to complete. Last status: [$($operation.status)]"
+        if (-not[string]::IsNullOrEmpty($getMicrosoftEntraIDUsersResponse.'@odata.nextLink')) {
+            $getMicrosoftEntraIDUsersSplatParams["Uri"] = $getMicrosoftEntraIDUsersResponse.'@odata.nextLink'
         }
         
-        if ([string]::IsNullOrEmpty($teamId)) {
-            throw "Unable to determine Team ID from Graph create team response headers."
-            
+        $getMicrosoftEntraIDUsersResponse = $null
+        $getMicrosoftEntraIDUsersResponse = Invoke-RestMethod @getMicrosoftEntraIDUsersSplatParams
+    
+        # Select only specified properties to limit memory usage
+        $getMicrosoftEntraIDUsersResponse.Value = $getMicrosoftEntraIDUsersResponse.Value | Select-Object $propertiesToSelect
+
+        if ($getMicrosoftEntraIDUsersResponse.Value -is [array]) {
+            [void]$microsoftEntraIDUsers.AddRange($getMicrosoftEntraIDUsersResponse.Value)
         }
-
-        if ($owners.Count -gt 1) {
-            $additionalMembers = @()
-            foreach ($owner in ($owners | Select-Object -Skip 1)) {
-                $additionalMembers += @{
-                    "@odata.type"     = "#microsoft.graph.aadUserConversationMember"
-                    roles             = @("owner")
-                    "user@odata.bind" = "https://graph.microsoft.com/v1.0/users/$($owner.id)"
-                }
-            }
-
-            $addMembersBody = @{
-                values = $additionalMembers
-            }
-
-            $addMembersSplatParams = @{
-                Uri         = "https://graph.microsoft.com/v1.0/teams/$($teamId)/members/add"
-                Body        = ($addMembersBody | ConvertTo-Json -Depth 10)
-                Headers     = $authorization
-                Method      = 'POST'
-                ContentType = 'application/json'
-                Verbose     = $false
-                ErrorAction = 'Stop'
-            }
-            $null = Invoke-RestMethod @addMembersSplatParams
-
-            Write-Information "Successfully added [$(($owners | Select-Object -Skip 1 | ForEach-Object { $_.displayName }) -join ', ')] as additional owners to team [$displayName]"
+        else {
+            [void]$microsoftEntraIDUsers.Add($getMicrosoftEntraIDUsersResponse.Value)
         }
-    }
+    } while (-not[string]::IsNullOrEmpty($getMicrosoftEntraIDUsersResponse.'@odata.nextLink'))
+    Write-Information "Queried Microsoft Entra ID Users matching search value [$filter]. Result count: $(@($microsoftEntraIDUsers).Count)"
 
-    $Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "MicrosoftTeams" # optional (free format text) 
-        Message           = "Successfully created team [$displayName] with description [$description] and owners [$(($owners | ForEach-Object { $_.displayName }) -join ', ')]" # required (free format text)
-        IsError           = $false # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $displayName # optional (free format text) 
-        TargetIdentifier  = $([string]$teamId) # optional (free format text) 
+    # Send results to HelloID
+    $actionMessage = "sending results to HelloID"
+    $microsoftEntraIDUsers | ForEach-Object {
+        Write-Output $_
     }
-    #send result back  
-    Write-Information -Tags "Audit" -MessageData $log    
 }
 catch {
     $ex = $PSItem
@@ -324,15 +252,6 @@ catch {
         $auditMessage = "Error $($actionMessage). Error: $($ex.Exception.Message)"
         $warningMessage = "Error at Line [$($ex.InvocationInfo.ScriptLineNumber)]: $($ex.InvocationInfo.Line). Error: $($ex.Exception.Message)"
     }
-    $Log = @{
-        Action            = "CreateResource" # optional. ENUM (undefined = default) 
-        System            = "MicrosoftTeams" # optional (free format text) 
-        Message           = $auditMessage # required (free format text) 
-        IsError           = $true # optional. Elastic reporting purposes only. (default = $false. $true = Executed action returned an error) 
-        TargetDisplayName = $displayName # optional (free format text) 
-        TargetIdentifier  = $([string]$teamId) # optional (free format text) 
-    }
-    Write-Information -Tags "Audit" -MessageData $log
     Write-Warning $warningMessage
     Write-Error $auditMessage
 }
