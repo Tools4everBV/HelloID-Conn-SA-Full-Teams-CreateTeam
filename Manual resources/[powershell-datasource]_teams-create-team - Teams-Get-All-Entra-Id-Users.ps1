@@ -17,7 +17,7 @@ $InformationPreference = "Continue"
 $WarningPreference = "Continue"
 
 # Fixed values
-$filter = "`$filter=accountEnabled eq true" # Get all enabled users
+$filter = "`$filter=userType eq 'Member' and accountEnabled eq true"
 
 $propertiesToSelect = @(
     "id",
@@ -209,7 +209,7 @@ try {
     $microsoftEntraIDUsers = [System.Collections.ArrayList]@()
     do {
         $getMicrosoftEntraIDUsersSplatParams = @{
-            Uri         = "https://graph.microsoft.com/v1.0/users?`$filter=userType eq 'Member'&`$select=$($propertiesToSelect -join ',')&`$top=999&`$count=true"
+            Uri         = "https://graph.microsoft.com/v1.0/users?$filter&`$select=$($propertiesToSelect -join ',')&`$top=999&`$count=true"
             Headers     = $authorization
             Method      = "GET"
             Verbose     = $false
