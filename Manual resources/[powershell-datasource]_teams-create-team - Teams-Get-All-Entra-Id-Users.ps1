@@ -17,7 +17,7 @@ $InformationPreference = "Continue"
 $WarningPreference = "Continue"
 
 # Fixed values
-$filter = "`$filter=accountEnabled eq true" # Get all enabled users
+$filter = "`$filter=userType eq 'Member' and accountEnabled eq true"
 
 $propertiesToSelect = @(
     "id",
